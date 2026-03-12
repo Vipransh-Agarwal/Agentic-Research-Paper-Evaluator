@@ -1,0 +1,21 @@
+# Core Agent Framework
+langchain>=0.1.0
+crewai>=0.28.0
+langgraph>=0.0.30
+
+# LLM Providers
+litellm>=1.35.0
+google-generativeai>=0.4.1 # For native Gemini API if needed
+
+# Scraping & Extraction
+beautifulsoup4>=4.12.3
+requests>=2.31.0
+pymupdf>=1.23.26 # Fallback for PDF
+
+# Output Generation
+markdown>=3.6
+weasyprint>=61.0 # Or reportlab depending on PDF complexity
+
+# Utilities
+python-dotenv>=1.0.1
+tiktoken>=0.6.0 # For token counting (or model-specific tokenizers)
