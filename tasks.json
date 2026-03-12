@@ -1,0 +1,89 @@
+{
+  "project": "Agentic Research Paper Evaluator",
+  "tasks": [
+    {
+      "id": "T01",
+      "title": "Setup Project Structure and Environment",
+      "description": "Initialize the project repository, set up virtual environment, and configure basic file structure as per PRD.",
+      "subtasks": [
+        "Initialize Git repository and add .gitignore.",
+        "Create requirements.txt with necessary dependencies (langchain, crewai/langgraph, beautifulsoup4, pymupdf, tenacity, etc.).",
+        "Create .env.example with required API keys (Gemini, OpenRouter, Tavily/DuckDuckGo, and optionally Mathpix).",
+        "Scaffold directories: src/scraper, src/processing, src/agents, src/orchestrator, src/output, tests/."
+      ]
+    },
+    {
+      "id": "T02",
+      "title": "Develop arXiv Scraper Service",
+      "description": "Implement the web scraping module to extract clean text from arXiv URLs using HTML first, with a PDF fallback.",
+      "subtasks": [
+        "Implement primary HTML scraping function using BeautifulSoup4 targeting arxiv.org/html/<id>.",
+        "Implement fallback PDF scraping function using PyMuPDF/pdfplumber for arxiv.org/pdf/<id> and log `[FORMULA: image-only, skipped]` for image-embedded formulas.",
+        "Implement optional Tier 3 extraction using Mathpix OCR / LaTeX-OCR for complex mathematical formulas.",
+        "Create CLI entrypoint logic to accept and validate arXiv URL."
+      ],
+      "dependencies": ["T01"]
+    },
+    {
+      "id": "T03",
+      "title": "Implement Document Decomposition and Chunking Engine",
+      "description": "Process the scraped text into logical sections and ensure no chunk exceeds the 16k token limit.",
+      "subtasks": [
+        "Write parser to decompose text into Abstract, Methodology, Results, Conclusion.",
+        "Implement token counting utility to estimate token size of text chunks.",
+        "Develop chunking logic to strictly enforce the <16,000 token limit per LLM call."
+      ],
+      "dependencies": ["T02"]
+    },
+    {
+      "id": "T04",
+      "title": "Build Specialized AI Agents",
+      "description": "Develop the five specialized agents required for paper evaluation.",
+      "subtasks": [
+        "Implement Consistency Agent (methodology vs results validation).",
+        "Implement Grammar & Language Agent (professional tone and syntax).",
+        "Implement Novelty Agent (integrate Semantic Scholar Graph API and arXiv Search API).",
+        "Implement Fact-Checker Agent (extract claims and verify, integrate Tavily/DuckDuckGo).",
+        "Implement Authenticity Agent (calculate Fabrication Probability using the 4 defined metrics)."
+      ],
+      "dependencies": ["T03"]
+    },
+    {
+      "id": "T05",
+      "title": "Develop Agent Orchestrator Workflow",
+      "description": "Configure the agentic framework (CrewAI or LangGraph) to manage the multi-agent execution pipeline.",
+      "subtasks": [
+        "Define agent roles, goals, and tasks within the framework.",
+        "Configure the workflow for passing chunked data, batching small chunks (<8k tokens).",
+        "Implement 4-second pacing (`asyncio.sleep`) between agent calls to respect 15 RPM limits.",
+        "Implement error handling via `tenacity` exponential backoff (max 3 retries) and 3-tier provider fallback.",
+        "Implement caching for LLM responses per chunk hash."
+      ],
+      "dependencies": ["T04"]
+    },
+    {
+      "id": "T06",
+      "title": "Implement Report Generator",
+      "description": "Format the multi-agent outputs into a comprehensive Judgement Report.",
+      "subtasks": [
+        "Create a data model/schema for compiling agent outputs.",
+        "Calculate final Fabrication Probability percentage based on the weighted metrics.",
+        "Implement Markdown report generation.",
+        "Implement PDF report generation using reportlab or WeasyPrint."
+      ],
+      "dependencies": ["T05"]
+    },
+    {
+      "id": "T07",
+      "title": "End-to-End Testing and Final Integration",
+      "description": "Test the entire pipeline using a known arXiv paper as a benchmark.",
+      "subtasks": [
+        "Write integration test evaluating a specific arXiv URL.",
+        "Verify token limits are respected across all API calls.",
+        "Ensure final report contains all required sections and scores.",
+        "Finalize README.md with setup and usage instructions."
+      ],
+      "dependencies": ["T06"]
+    }
+  ]
+}
