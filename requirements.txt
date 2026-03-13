@@ -17,11 +17,16 @@ pymupdf>=1.23.26 # Fallback for PDF
 markdown>=3.6
 weasyprint>=61.0 # Or reportlab depending on PDF complexity
 
+# UI
+streamlit>=1.55.0
+
 # Utilities
 pydantic>=2.0.0
 python-dotenv>=1.0.1
 tiktoken>=0.6.0 # For token counting (or model-specific tokenizers)
 rich>=13.0.0 # Terminal styling
+tenacity>=8.2.0 # For retry logic
+
 
 # Testing
 pytest>=7.0.0
