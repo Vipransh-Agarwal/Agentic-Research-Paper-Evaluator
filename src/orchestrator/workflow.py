@@ -88,8 +88,8 @@ async def consistency_node(state: GraphState):
     scores = []
     summaries = []
     
-    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-1.5-flash")
-    fallback_models = ["openrouter/google/gemini-flash-1.5", "ollama/llama3"]
+    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
+    fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     
     for idx, chunk in enumerate(chunks):
         if idx > 0:
@@ -155,8 +155,8 @@ async def grammar_node(state: GraphState):
     scores = []
     summaries = []
     
-    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-1.5-flash")
-    fallback_models = ["openrouter/google/gemini-flash-1.5", "ollama/llama3"]
+    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
+    fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     
     for idx, chunk in enumerate(chunks):
         if idx > 0:
@@ -214,8 +214,8 @@ async def novelty_node(state: GraphState):
     summaries = []
     similar_works = []
     
-    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-1.5-flash")
-    fallback_models = ["openrouter/google/gemini-flash-1.5", "ollama/llama3"]
+    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
+    fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     
     # Pre-fetch context from Semantic Scholar
     arxiv_id = state.get('arxiv_id', '')
@@ -288,8 +288,8 @@ async def fact_check_node(state: GraphState):
     fact_scores = []
     summaries = []
     
-    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-1.5-flash")
-    fallback_models = ["openrouter/google/gemini-flash-1.5", "ollama/llama3"]
+    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
+    fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     arxiv_id = state.get('arxiv_id', '')
     
     for idx, chunk in enumerate(chunks):
@@ -383,8 +383,8 @@ async def authenticity_node(state: GraphState):
     prompt = build_authenticity_prompt(prompt_vars)
     messages = [{"role": "system", "content": prompt["system"]}, {"role": "user", "content": prompt["user"]}]
     
-    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-1.5-flash")
-    fallback_models = ["openrouter/google/gemini-flash-1.5", "ollama/llama3"]
+    primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
+    fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     
     try:
         response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)

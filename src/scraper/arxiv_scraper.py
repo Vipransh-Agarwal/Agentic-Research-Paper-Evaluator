@@ -54,8 +54,8 @@ def scrape_arxiv(arxiv_id: str) -> str:
 
 def extract_arxiv_id(url: str) -> str:
     """Extracts arxiv ID from various url formats."""
-    match = re.search(r'arxiv\.org/(?:abs|pdf|html)/([^v]+)(?:v\d+)?(?:\.pdf)?', url)
+    match = re.search(r'arxiv\.org/(?:abs|pdf|html)/([^v]+?)(?:v\d+)?(?:\.pdf)?$', url)
     if match:
-        return match.group(1)
+        return match.group(1).replace('.pdf', '')
     # Just return the url if we can't parse it (might be direct ID)
-    return url.split("/")[-1]
+    return url.split("/")[-1].replace('.pdf', '')
