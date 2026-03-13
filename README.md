@@ -117,23 +117,32 @@ Every evaluation run saves its final output to the `reports/` directory as a Mar
 The system utilizes a modular, agent-centric architecture orchestrated by LangGraph/CrewAI:
 
 ```text
-src/
-├── main.py                 # CLI Entrypoint & Argument Parsing
-├── scraper/                
-│   └── arxiv_scraper.py    # URL fetching, HTML parsing (ar5iv), PDF fallback
-├── processing/             
-│   └── chunker.py          # 16k token limit enforcement & text sectioning
-├── agents/                 
-│   ├── prompt_templates/   # Agent-specific prompts
-│   │   ├── consistency.py  # Checks logical flow between sections
-│   │   ├── grammar.py      # Evaluates writing quality
-│   │   ├── novelty.py      # Assesses uniqueness against prior work
-│   │   ├── fact_checking.py# Verifies key claims
-│   │   └── authenticity.py # Calculates Fabricability probability
-├── orchestrator/           
-│   └── workflow.py         # Agent graph definition and state management
-└── output/                 
-    └── extractor.py        # Report compilation into MD
+.
+├── app.py                  # Streamlit Dashboard UI
+├── requirements.txt        # Project dependencies
+├── benchmarks/             # Reference judgement reports
+├── docs/                   # Architecture and PRD documentation
+├── reports/                # Generated Judgement Reports (.md)
+├── scripts/                # Utility scripts (benchmarking, etc.)
+├── src/                    # Core source code
+│   ├── main.py             # CLI Entrypoint & Argument Parsing
+│   ├── agents/             # Agent definitions & logic
+│   │   └── prompt_templates/ # Domain-specific prompts
+│   │       ├── authenticity.py  # Calculates Fabricability probability
+│   │       ├── consistency.py   # Checks logical flow between sections
+│   │       ├── fact_checking.py # Verifies key claims
+│   │       ├── grammar.py       # Evaluates writing quality
+│   │       └── novelty.py       # Assesses uniqueness against prior work
+│   ├── orchestrator/       # LangGraph workflow orchestration
+│   │   └── workflow.py     # Agent graph definition and state management
+│   ├── output/             # Report generation & extraction
+│   │   └── extractor.py    # Report compilation into MD
+│   ├── processing/         # Text chunking & token management
+│   │   └── chunker.py      # 16k token limit enforcement & text sectioning
+│   └── scraper/            # arXiv scraping & PDF fallback
+│       ├── arxiv_scraper.py# URL fetching, HTML parsing (ar5iv), PDF fallback
+│       └── tools.py        # Scraping utilities and tool definitions
+└── tests/                  # Pytest suite (Unit & E2E)
 ```
 
 ## Development

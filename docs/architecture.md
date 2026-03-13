@@ -16,7 +16,7 @@ The Agentic Research Paper Evaluator is a multi-agent AI system designed to auto
   - Consistency Agent
   - Grammar & Language Agent
   - Novelty Agent (integrating Semantic Scholar / arXiv Search)
-  - Fact-Checker Agent (integrating Tavily / DuckDuckGo)
+  - Fact-Checker Agent (integrating DuckDuckGo)
   - Authenticity Agent (calculating Fabrication Probability)
 - **Output:** Generate a comprehensive Judgement Report in Markdown or PDF format.
 
@@ -88,7 +88,7 @@ The Agentic Research Paper Evaluator is a multi-agent AI system designed to auto
 - **Fact-Checker:** Extract and verify claims using web search.
 - **Authenticity:** Calculate the Fabrication Probability based on predefined metrics.
 
-**Technology:** `langchain` / `litellm` for LLM integration; specific agents will use tools interacting with Semantic Scholar Graph API, arXiv Search API, and Tavily/DuckDuckGo.
+**Technology:** `langchain` / `litellm` for LLM integration; specific agents will use tools interacting with Semantic Scholar Graph API, arXiv Search API, and DuckDuckGo.
 
 ### 6. Report Generator (`src/output/report_builder.py`)
 **Responsibilities:**
@@ -106,7 +106,7 @@ The Agentic Research Paper Evaluator is a multi-agent AI system designed to auto
 4. **Orchestration:** Agent Orchestrator receives the chunks and initializes the CrewAI/LangGraph workflow.
 5. **Evaluation:** Specialized Agents process the chunks:
    - Perform LLM inference for analysis.
-   - Novelty and Fact-Checker agents query external APIs (Semantic Scholar, Tavily) for verification.
+   - Novelty and Fact-Checker agents query external APIs for verification.
 6. **Aggregation:** Agents return structured evaluations (JSON) back to the Orchestrator.
 7. **Reporting:** Report Generator compiles the structured data, calculates final metrics, and saves the output to the local filesystem as a Markdown or PDF file.
 
@@ -161,7 +161,7 @@ interface JudgementReport {
 | **Ollama (Local)** | Local LLM inference. | No |
 | **Semantic Scholar Graph API** | Used by Novelty Agent for literature cross-referencing. | No (Free tier) |
 | **arXiv Search API** | Used by Novelty Agent to check overlapping claims. | No |
-| **Tavily / DuckDuckGo Search** | Used by Fact-Checker Agent to verify claims via web. | Yes/No |
+| **DuckDuckGo Search** | Used by Fact-Checker Agent to verify claims via web. | Yes/No |
 
 ## Scaling Considerations
 
@@ -203,12 +203,12 @@ interface JudgementReport {
 Designed to operate entirely on free tiers for the MVP:
 - **Compute:** $0 (Local execution)
 - **LLM APIs:** $0 (Gemini Free tier, OpenRouter free models)
-- **Search APIs:** $0 (Tavily free tier, DuckDuckGo, Semantic Scholar)
+- **Search APIs:** $0 (DuckDuckGo, Semantic Scholar)
 - **Total:** $0/month for individual CLI usage.
 
 ## Security
 
-- API Keys (Gemini, OpenRouter, Tavily) are stored locally in a `.env` file and excluded from version control via `.gitignore`.
+- API Keys (Gemini, OpenRouter) are stored locally in a `.env` file and excluded from version control via `.gitignore`.
 - The application processes public academic data and does not collect or store sensitive PII.
 
 ## Resolved Architecture Decisions

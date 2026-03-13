@@ -143,7 +143,7 @@ interface JudgementReport {
 **External Integrations (Novelty & Fact-Checking Agents):**
 *   **Semantic Scholar Graph API:** Used for comprehensive academic literature search, finding related papers, and cross-referencing abstracts. (Free REST API)
 *   **arXiv Search API:** Used to pull metadata and abstracts of recent papers in specific domains to check for overlapping claims.
-*   **Tavily / DuckDuckGo Search:** Supplementary web search to catch industry blog posts, GitHub repos, or non-arXiv preprints.
+*   **DuckDuckGo Search:** Supplementary web search to catch industry blog posts, GitHub repos, or non-arXiv preprints.
 
 ### 10. State Management Map
 
