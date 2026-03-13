@@ -58,6 +58,12 @@ def extract_structured_json(llm_response_text: str, target_model: BaseModel) -> 
     Extracts and validates JSON from a raw LLM text response into a Pydantic model.
     Handles common LLM formatting quirks (like markdown code blocks).
     """
+    if llm_response_text is None:
+        raise ExtractionError(
+            message="LLM response content is None. The model failed to generate a response.",
+            raw_output=""
+        )
+
     # 1. Clean the output (strip markdown block formatting if present)
     cleaned_text = llm_response_text.strip()
     if cleaned_text.startswith("```json"):
@@ -70,14 +76,25 @@ def extract_structured_json(llm_response_text: str, target_model: BaseModel) -> 
         
     cleaned_text = cleaned_text.strip()
     
-    # 2. Parse JSON
+    # 2. Parse JSON (with repair fallback for malformed LLM output)
     try:
         parsed_json = json.loads(cleaned_text)
-    except json.JSONDecodeError as e:
-        raise ExtractionError(
-            message=f"Failed to parse valid JSON from LLM response: {str(e)}",
-            raw_output=llm_response_text
-        )
+    except json.JSONDecodeError as original_error:
+        try:
+            from json_repair import repair_json
+            repaired = repair_json(cleaned_text, return_objects=True)
+            if isinstance(repaired, dict) and repaired:
+                parsed_json = repaired
+            else:
+                raise ExtractionError(
+                    message=f"Failed to parse valid JSON from LLM response: {str(original_error)}",
+                    raw_output=llm_response_text
+                )
+        except ImportError:
+            raise ExtractionError(
+                message=f"Failed to parse valid JSON from LLM response: {str(original_error)}",
+                raw_output=llm_response_text
+            )
         
     # 3. Validate against Pydantic Schema
     try:

@@ -1,17 +1,22 @@
 import json
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from pydantic import ConfigDict
 
 class FabricationMetrics(BaseModel):
-    claimVerificationRatio: float = Field(..., description="Estimated percentage of verified claims vs unverified (0-100)")
-    logicalDisconnectPenalty: float = Field(..., description="Penalty score for logical inconsistencies (0-100)")
-    citationIntegrityIndex: float = Field(..., description="Index representing citation reliability based on fact check (0-100)")
-    methodologicalVaguenessScore: float = Field(..., description="Score for vague methodologies (0-100)")
+    model_config = ConfigDict(extra='ignore', populate_by_name=True)
+
+    claimVerificationRatio: float = Field(default=50.0, alias="claim_verification_ratio", description="Estimated percentage of verified claims vs unverified (0-100)")
+    logicalDisconnectPenalty: float = Field(default=50.0, alias="logical_disconnect_penalty", description="Penalty score for logical inconsistencies (0-100)")
+    citationIntegrityIndex: float = Field(default=50.0, alias="citation_integrity_index", description="Index representing citation reliability based on fact check (0-100)")
+    methodologicalVaguenessScore: float = Field(default=50.0, alias="methodological_vagueness_score", description="Score for vague methodologies (0-100)")
 
 class AuthenticityEvaluation(BaseModel):
+    model_config = ConfigDict(extra='ignore')
+
     summary: str = Field(..., description="Brief overview of the paper's authenticity and fabrication risk")
     fabrication_probability: float = Field(..., description="Calculated final risk of fabrication (percentage 0-100%)")
-    metrics: FabricationMetrics = Field(..., description="Detailed fabrication metrics")
+    metrics: Optional[FabricationMetrics] = Field(default=None, description="Detailed fabrication metrics")
 
 class AuthenticityPromptVariables(BaseModel):
     consistency_summary: str

@@ -20,9 +20,66 @@ from src.agents.prompt_templates import (
 from src.output.extractor import extract_structured_json, generate_final_report
 from litellm import acompletion
 
+# Global flags to ensure status is logged once
+_gemini_status_logged = False
+_or_status_logged = False
+
+async def smart_acompletion(model: str, messages: List[Dict[str, str]], fallbacks: List[str] = None, **kwargs):
+    global _gemini_status_logged, _or_status_logged
+    
+    fallbacks = fallbacks or []
+    all_models = [model] + fallbacks
+    valid_models = []
+    
+    for i, m in enumerate(all_models):
+        is_or = "openrouter" in m.lower()
+        is_gemini = "gemini" in m.lower() and not is_or
+
+        if is_gemini:
+            key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+            if not key:
+                if not _gemini_status_logged:
+                    next_model_name = "open router" if any("openrouter" in next_m.lower() for next_m in all_models[i+1:]) else "next available model"
+                    logger.info(f"gemini key not found, falling back to {next_model_name}")
+                    _gemini_status_logged = True
+                continue
+            else:
+                if not _gemini_status_logged:
+                    logger.info("gemini key found")
+                    logger.info("gemini model found")
+                    _gemini_status_logged = True
+        
+        elif is_or:
+            key = os.getenv("OPENROUTER_API_KEY")
+            if not key:
+                if not _or_status_logged:
+                    next_model_name = "ollama" if any("ollama" in next_m.lower() for next_m in all_models[i+1:]) else "next available model"
+                    logger.info(f"openrouter key not found, falling back to {next_model_name}")
+                    _or_status_logged = True
+                continue
+            else:
+                if not _or_status_logged:
+                    logger.info("openrouter key found")
+                    logger.info("open router model found")
+                    _or_status_logged = True
+        
+        valid_models.append(m)
+
+    if not valid_models:
+        # If no models have keys, just try the original call and let litellm raise its error
+        return await acompletion(model=model, messages=messages, fallbacks=fallbacks, **kwargs)
+
+    return await acompletion(model=valid_models[0], messages=messages, fallbacks=valid_models[1:] if len(valid_models) > 1 else None, **kwargs)
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
+
+# LLM Constants
+try:
+    MAX_OUTPUT_TOKENS = int(os.getenv("MAX_OUTPUT_TOKENS", 16000))
+except (ValueError, TypeError):
+    MAX_OUTPUT_TOKENS = 16000
 
 # Initialize singletons
 chunker = PaperChunker()
@@ -123,8 +180,11 @@ async def consistency_node(state: GraphState):
         else:
             logger.info(f"Consistency Agent: Calling LLM for chunk {idx+1}/{len(chunks)}...")
             try:
-                response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)
+                response = await smart_acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
                 content = response.choices[0].message.content
+                if content is None:
+                    logger.warning(f"Consistency Agent: LLM returned None content for chunk {idx+1}/{len(chunks)}, skipping chunk.")
+                    continue
                 eval_result = extract_structured_json(content, ConsistencyEvaluation)
                 eval_dict = eval_result.model_dump()
                 cache_manager.save_response(chunk_hash, "consistency", eval_dict)
@@ -188,8 +248,11 @@ async def grammar_node(state: GraphState):
         else:
             logger.info(f"Grammar Agent: Calling LLM for chunk {idx+1}/{len(chunks)}...")
             try:
-                response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)
+                response = await smart_acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
                 content = response.choices[0].message.content
+                if content is None:
+                    logger.warning(f"Grammar Agent: LLM returned None content for chunk {idx+1}/{len(chunks)}, skipping chunk.")
+                    continue
                 eval_result = extract_structured_json(content, GrammarEvaluation)
                 eval_dict = eval_result.model_dump()
                 cache_manager.save_response(chunk_hash, "grammar", eval_dict)
@@ -266,8 +329,11 @@ async def novelty_node(state: GraphState):
         else:
             logger.info(f"Novelty Agent: Calling LLM for chunk {idx+1}/{len(chunks)}...")
             try:
-                response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)
+                response = await smart_acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
                 content = response.choices[0].message.content
+                if content is None:
+                    logger.warning(f"Novelty Agent: LLM returned None content for chunk {idx+1}/{len(chunks)}, skipping chunk.")
+                    continue
                 eval_result = extract_structured_json(content, NoveltyEvaluation)
                 eval_dict = eval_result.model_dump()
                 cache_manager.save_response(chunk_hash, "novelty", eval_dict)
@@ -328,8 +394,9 @@ async def fact_check_node(state: GraphState):
             # 1. Quick claim extraction
             extract_prompt = f"Extract 1-3 key verifiable claims from the following text as a short comma-separated list. If no specific factual claims, return 'None'. Text:\n{chunk[:2000]}"
             try:
-                claim_response = await acompletion(model=primary_model, messages=[{"role": "user", "content": extract_prompt}], temperature=0.0, fallbacks=fallback_models)
-                claims_text = claim_response.choices[0].message.content.strip()
+                claim_response = await smart_acompletion(model=primary_model, messages=[{"role": "user", "content": extract_prompt}], temperature=0.0, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
+                raw_content = claim_response.choices[0].message.content
+                claims_text = raw_content.strip() if raw_content else "None"
                 
                 injected_context = ""
                 if claims_text.lower() != 'none':
@@ -353,8 +420,11 @@ async def fact_check_node(state: GraphState):
             messages = [{"role": "system", "content": prompt["system"]}, {"role": "user", "content": prompt["user"]}]
             
             try:
-                response = await acompletion(model=primary_model, messages=messages, temperature=0.0, fallbacks=fallback_models)
+                response = await smart_acompletion(model=primary_model, messages=messages, temperature=0.0, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
                 content = response.choices[0].message.content
+                if content is None:
+                    logger.warning(f"Fact-Checking Agent: LLM returned None content for chunk {idx+1}/{len(chunks)}, skipping chunk.")
+                    continue
                 eval_result = extract_structured_json(content, FactCheckingEvaluation)
                 eval_dict = eval_result.model_dump()
                 cache_manager.save_response(chunk_hash, "fact_check", eval_dict)
@@ -410,8 +480,12 @@ async def authenticity_node(state: GraphState):
     fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     
     try:
-        response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)
+        response = await smart_acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models, max_tokens=MAX_OUTPUT_TOKENS)
         content = response.choices[0].message.content
+        if content is None:
+            logger.warning("Authenticity Agent: LLM returned None content, skipping.")
+            return {"authenticity_eval": None}
+        logger.info(f"Authenticity Agent raw response: {content[:500]}")
         eval_result = extract_structured_json(content, AuthenticityEvaluation)
         eval_dict = eval_result.model_dump()
         return {"authenticity_eval": eval_dict}

@@ -28,6 +28,8 @@ rich>=13.0.0 # Terminal styling
 tenacity>=8.2.0 # For retry logic
 
 
+json-repair>=0.25.0 # Fixes malformed JSON from LLMs
+
 # Testing
 pytest>=7.0.0
 pytest-asyncio>=0.21.0

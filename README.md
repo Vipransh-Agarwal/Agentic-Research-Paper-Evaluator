@@ -69,6 +69,24 @@ The system utilizes a modular, agent-centric architecture orchestrated by **Lang
 └── tests/                  # Pytest suite (11+ passed tests)
 ```
 
+## 🤖 Model Selection & API Configuration
+
+This application uses **[LiteLLM](https://docs.litellm.ai/)** to route requests across different AI providers. This allows you to switch between native Gemini, OpenRouter, or local Ollama models simply by changing a single environment variable.
+
+### 1. Provider Prefixes (REQUIRED)
+To ensure the correct API key is used, you **must** include the provider prefix in your `LLM_MODEL` variable:
+*   **Gemini:** Use `gemini/` prefix (e.g., `gemini/gemini-3.1-flash-lite-preview`). Requires `GEMINI_API_KEY`.
+*   **OpenRouter:** Use `openrouter/` prefix. Use `openrouter/google/gemini-3.1-flash-lite-preview` (Default) to automatically use the best available free model. Requires `OPENROUTER_API_KEY`.
+*   **Ollama:** Use `ollama/` prefix (e.g., `ollama/llama3`).
+
+### 2. Critical Configuration Rules
+*   **Chat Models Only:** The system requires **Instruct** or **Chat** models to generate reports. **Do NOT** use "embedding" models (e.g., `nvidia/...-embed-...`) as they cannot process text and will cause the application to crash.
+*   **Token Limits:** 
+    *   **Input:** `MAX_TOKENS_PER_CHUNK` (default 16,000) governs how much text is sent to the LLM at once.
+    *   **Output:** `MAX_OUTPUT_TOKENS` (default 16,000) limits the response length. This is critical for **OpenRouter users** to prevent "insufficient credits" errors caused by high default reservation limits.
+*   **Rate Limiting:** To support the **Gemini Free Tier (15 RPM)**, the system enforces a **4-second delay** between every LLM call. This ensures stability but can be adjusted in `src/orchestrator/workflow.py` if using a paid tier.
+*   **Fallback Strategy:** If your primary model fails (e.g., due to rate limits or invalid keys), the application is hardcoded to automatically attempt fallback to **OpenRouter** and then **Ollama** before failing the node.
+
 ## 🧪 Development & Testing
 
 ### Running Tests
