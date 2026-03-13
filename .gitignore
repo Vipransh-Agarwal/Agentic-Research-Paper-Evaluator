@@ -41,6 +41,10 @@ Judgement_Report.pdf
 *.log
 *.tmp
 
+#Cache files
+.cache/
+.mo/
+
 # Gemini
 .gemini/
 GEMINI.md

@@ -1,5 +1,6 @@
 # Core Agent Framework
 langchain>=0.1.0
+langchain-text-splitters>=0.2.0
 crewai>=0.28.0
 langgraph>=0.0.30
 
@@ -17,5 +18,11 @@ markdown>=3.6
 weasyprint>=61.0 # Or reportlab depending on PDF complexity
 
 # Utilities
+pydantic>=2.0.0
 python-dotenv>=1.0.1
 tiktoken>=0.6.0 # For token counting (or model-specific tokenizers)
+rich>=13.0.0 # Terminal styling
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
