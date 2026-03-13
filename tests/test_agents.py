@@ -26,7 +26,7 @@ async def test_consistency_node(mock_sleep, mock_acompletion, mock_llm_response_
     result = await consistency_node(state)
     
     assert result["consistency_eval"] is not None
-    assert result["consistency_eval"]["consistency_score"] == 9
+    assert result["consistency_eval"]["consistency_score"] == 90
     assert "Clear structure" in result["consistency_eval"]["strengths"]
     # Ensure it was called twice (once per chunk)
     assert mock_acompletion.call_count == 2
@@ -41,7 +41,7 @@ async def test_grammar_node(mock_sleep, mock_acompletion, mock_llm_response_gram
     result = await grammar_node(state)
     
     assert result["grammar_eval"] is not None
-    assert result["grammar_eval"]["grammar_score"] == 8
+    assert result["grammar_eval"]["grammar_rating"] == "High"
 
 @pytest.mark.asyncio
 @patch('src.orchestrator.workflow.acompletion', new_callable=AsyncMock)
@@ -55,7 +55,7 @@ async def test_novelty_node(mock_sleep, mock_search, mock_acompletion, mock_llm_
     result = await novelty_node(state)
     
     assert result["novelty_eval"] is not None
-    assert result["novelty_eval"]["novelty_score"] == 8
+    assert "Breakthrough" in result["novelty_eval"]["novelty_index"]
     assert result["novelty_eval"]["similar_works_referenced"] is True
 
 @pytest.mark.asyncio
@@ -74,8 +74,8 @@ async def test_fact_check_node(mock_sleep, mock_search, mock_acompletion, mock_l
     result = await fact_check_node(state)
     
     assert result["fact_check_eval"] is not None
-    assert result["fact_check_eval"]["fact_score"] == 9
-    assert result["fact_check_eval"]["fabrication_risk_score"] == 2
+    assert result["fact_check_eval"]["accuracy_score"] == 95
+    assert result["fact_check_eval"]["fabrication_risk_score"] == 5
 
 @pytest.mark.asyncio
 @patch('src.orchestrator.workflow.acompletion', new_callable=AsyncMock)

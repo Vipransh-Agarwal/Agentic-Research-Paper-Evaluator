@@ -15,7 +15,7 @@ class NoveltyEvaluation(BaseModel):
     summary: str = Field(..., description="Brief overview of the paper's overall novelty")
     findings: List[NoveltyFinding] = Field(default_factory=list, description="Specific novelty findings")
     similar_works_referenced: bool = Field(..., description="Did the paper adequately reference similar works?")
-    novelty_score: int = Field(..., ge=1, le=10, description="Overall novelty score from 1-10")
+    novelty_index: str = Field(..., description="A qualitative description summarizing the novelty and impact")
 
 # ---------------------------------------------------------
 # Prompt Variables Validation
@@ -26,6 +26,7 @@ class NoveltyPromptVariables(BaseModel):
     paper_abstract: str
     paper_text: str
     domain_knowledge_context: Optional[str] = "General academic baseline"
+    current_utc_time: str
 
 # ---------------------------------------------------------
 # Few-Shot Examples
@@ -51,7 +52,7 @@ Domain Context: General Physics
     }
   ],
   "similar_works_referenced": true,
-  "novelty_score": 9
+  "novelty_index": "Breakthrough: Establishes a new cross-disciplinary methodology with high potential impact."
 }
 ```
 
@@ -79,7 +80,7 @@ Domain Context: Computer Vision
     }
   ],
   "similar_works_referenced": true,
-  "novelty_score": 3
+  "novelty_index": "Incremental: Primarily an application of existing methods to a well-studied problem."
 }
 ```
 """
@@ -90,8 +91,10 @@ Domain Context: Computer Vision
 
 NOVELTY_PROMPTS = {
     "v1.0": {
-        "system": """
+        "system": lambda vars: f"""
 # System Prompt: Research Paper Novelty Evaluator
+
+Current UTC Time: {vars.current_utc_time} (All your analysis must be context-aware of this date).
 
 You are an expert academic peer-reviewer specializing in assessing the novelty and originality of research papers. Your role is to determine if the paper introduces new ideas, methods, datasets, or applications, or if it merely iterates on existing work.
 
@@ -100,18 +103,18 @@ You are an expert academic peer-reviewer specializing in assessing the novelty a
 Provide your evaluation strictly in the following JSON structure:
 
 ```json
-{
+{{
   "summary": "Brief 1-2 sentence overview of the paper's novelty",
   "findings": [
-    {
+    {{
       "aspect": "Aspect of the paper (e.g., Methodology, Dataset)",
       "novelty_level": "high|medium|low|none",
       "justification": "Reasoning comparing to known baselines"
-    }
+    }}
   ],
   "similar_works_referenced": true|false,
-  "novelty_score": 1-10 (integer between 1 and 10)
-}
+  "novelty_index": "Qualitative description summarizing novelty"
+}}
 ```
 
 ## Style Guidelines
@@ -150,7 +153,7 @@ def build_novelty_prompt(vars_dict: dict, version: str = "v1.0") -> dict:
         raise ValueError(f"Version {version} not found in NOVELTY_PROMPTS")
     template = NOVELTY_PROMPTS[version]
     return {
-        "system": template["system"],
+        "system": template["system"](valid_vars),
         "user": template["user"](valid_vars)
     }
 

@@ -5,6 +5,7 @@ from langgraph.graph import StateGraph, END
 from tenacity import retry, stop_after_attempt, wait_exponential
 import os
 import json
+from datetime import datetime, timezone
 
 from src.scraper.arxiv_scraper import scrape_arxiv, extract_arxiv_id
 from src.scraper.tools import search_semantic_scholar_impl, SearchSemanticScholarParams, search_duckduckgo_impl, SearchDuckDuckGoParams
@@ -27,6 +28,10 @@ logger = logging.getLogger(__name__)
 chunker = PaperChunker()
 cache_manager = LLMCacheManager()
 
+# Helper for UTC time
+def get_utc_now():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
 # Define the State for the LangGraph Workflow
 class GraphState(TypedDict):
     url: str
@@ -42,6 +47,8 @@ class GraphState(TypedDict):
     authenticity_eval: Optional[Dict[str, Any]]
     
     final_report: Optional[str]
+    final_verdict: Optional[str]
+    overall_score: Optional[float]
     errors: List[str]
 
 # ---------------------------------------------------------
@@ -90,6 +97,7 @@ async def consistency_node(state: GraphState):
     
     primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
     fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
+    current_time = get_utc_now()
     
     for idx, chunk in enumerate(chunks):
         if idx > 0:
@@ -99,7 +107,8 @@ async def consistency_node(state: GraphState):
             "paper_title": f"Paper {state.get('arxiv_id')}",
             "paper_abstract": "Abstract extracted from text...",
             "paper_text": chunk,
-            "focus_area": "Logical flow and structural integrity"
+            "focus_area": "Logical flow and structural integrity",
+            "current_utc_time": current_time
         }
         
         prompt = build_consistency_prompt(prompt_vars)
@@ -127,7 +136,7 @@ async def consistency_node(state: GraphState):
             all_issues.extend(eval_dict["issues"])
         if eval_dict.get("strengths"):
             all_strengths.extend(eval_dict["strengths"])
-        if eval_dict.get("consistency_score"):
+        if eval_dict.get("consistency_score") is not None:
             scores.append(eval_dict["consistency_score"])
         if eval_dict.get("summary"):
             summaries.append(eval_dict["summary"])
@@ -152,17 +161,21 @@ async def grammar_node(state: GraphState):
         return {"grammar_eval": None}
         
     all_issues = []
-    scores = []
+    ratings = []
     summaries = []
     
     primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
     fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
+    current_time = get_utc_now()
     
     for idx, chunk in enumerate(chunks):
         if idx > 0:
             await asyncio.sleep(4)
         
-        prompt_vars = {"paper_text": chunk}
+        prompt_vars = {
+            "paper_text": chunk,
+            "current_utc_time": current_time
+        }
         prompt = build_grammar_prompt(prompt_vars)
         messages = [{"role": "system", "content": prompt["system"]}, {"role": "user", "content": prompt["user"]}]
         
@@ -186,18 +199,22 @@ async def grammar_node(state: GraphState):
         
         if eval_dict.get("issues"):
             all_issues.extend(eval_dict["issues"])
-        if eval_dict.get("grammar_score"):
-            scores.append(eval_dict["grammar_score"])
+        if eval_dict.get("grammar_rating"):
+            ratings.append(eval_dict["grammar_rating"])
         if eval_dict.get("summary"):
             summaries.append(eval_dict["summary"])
 
-    avg_score = int(sum(scores) / len(scores)) if scores else 0
+    # Aggregate rating: Take the "lowest" rating found
+    rating_rank = {"High": 3, "Medium": 2, "Low": 1}
+    min_rank = min([rating_rank.get(r, 2) for r in ratings]) if ratings else 2
+    final_rating = [k for k, v in rating_rank.items() if v == min_rank][0]
+    
     final_summary = " ".join(summaries)
     
     final_eval = {
         "summary": final_summary[:500] + "..." if len(final_summary) > 500 else final_summary,
         "issues": all_issues,
-        "grammar_score": avg_score
+        "grammar_rating": final_rating
     }
     return {"grammar_eval": final_eval}
 
@@ -210,12 +227,13 @@ async def novelty_node(state: GraphState):
         return {"novelty_eval": None}
         
     all_findings = []
-    scores = []
+    indices = []
     summaries = []
     similar_works = []
     
     primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
     fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
+    current_time = get_utc_now()
     
     # Pre-fetch context from Semantic Scholar
     arxiv_id = state.get('arxiv_id', '')
@@ -233,7 +251,8 @@ async def novelty_node(state: GraphState):
             "paper_title": f"Paper {arxiv_id}",
             "paper_abstract": "Abstract context",
             "paper_text": injected_context + chunk,
-            "domain_knowledge_context": "General scientific baseline"
+            "domain_knowledge_context": "General scientific baseline",
+            "current_utc_time": current_time
         }
         prompt = build_novelty_prompt(prompt_vars)
         messages = [{"role": "system", "content": prompt["system"]}, {"role": "user", "content": prompt["user"]}]
@@ -258,20 +277,20 @@ async def novelty_node(state: GraphState):
         
         if eval_dict.get("findings"):
             all_findings.extend(eval_dict["findings"])
-        if eval_dict.get("novelty_score"):
-            scores.append(eval_dict["novelty_score"])
+        if eval_dict.get("novelty_index"):
+            indices.append(eval_dict["novelty_index"])
         if eval_dict.get("summary"):
             summaries.append(eval_dict["summary"])
         similar_works.append(eval_dict.get("similar_works_referenced", False))
 
-    avg_score = int(sum(scores) / len(scores)) if scores else 0
+    final_index = "; ".join(list(set(indices)))
     final_summary = " ".join(summaries)
     
     final_eval = {
         "summary": final_summary[:500] + "..." if len(final_summary) > 500 else final_summary,
         "findings": all_findings,
         "similar_works_referenced": any(similar_works),
-        "novelty_score": avg_score
+        "novelty_index": final_index
     }
     return {"novelty_eval": final_eval}
 
@@ -285,12 +304,13 @@ async def fact_check_node(state: GraphState):
         
     all_claims = []
     risk_scores = []
-    fact_scores = []
+    accuracy_scores = []
     summaries = []
     
     primary_model = os.getenv("LLM_MODEL", "gemini/gemini-3.1-flash-lite-preview")
     fallback_models = ["openrouter/google/gemini-3.1-flash-lite-preview", "ollama/llama3"]
     arxiv_id = state.get('arxiv_id', '')
+    current_time = get_utc_now()
     
     for idx, chunk in enumerate(chunks):
         if idx > 0:
@@ -326,13 +346,14 @@ async def fact_check_node(state: GraphState):
             prompt_vars = {
                 "paper_text": injected_context + chunk,
                 "extract_count": 5,
-                "external_knowledge_allowed": True
+                "external_knowledge_allowed": True,
+                "current_utc_time": current_time
             }
             prompt = build_fact_checking_prompt(prompt_vars)
             messages = [{"role": "system", "content": prompt["system"]}, {"role": "user", "content": prompt["user"]}]
             
             try:
-                response = await acompletion(model=primary_model, messages=messages, temperature=0.2, fallbacks=fallback_models)
+                response = await acompletion(model=primary_model, messages=messages, temperature=0.0, fallbacks=fallback_models)
                 content = response.choices[0].message.content
                 eval_result = extract_structured_json(content, FactCheckingEvaluation)
                 eval_dict = eval_result.model_dump()
@@ -343,22 +364,22 @@ async def fact_check_node(state: GraphState):
         
         if eval_dict.get("claims_evaluated"):
             all_claims.extend(eval_dict["claims_evaluated"])
-        if eval_dict.get("fabrication_risk_score"):
+        if eval_dict.get("fabrication_risk_score") is not None:
             risk_scores.append(eval_dict["fabrication_risk_score"])
-        if eval_dict.get("fact_score"):
-            fact_scores.append(eval_dict["fact_score"])
+        if eval_dict.get("accuracy_score") is not None:
+            accuracy_scores.append(eval_dict["accuracy_score"])
         if eval_dict.get("summary"):
             summaries.append(eval_dict["summary"])
 
-    avg_risk = int(sum(risk_scores) / len(risk_scores)) if risk_scores else 1
-    avg_fact = int(sum(fact_scores) / len(fact_scores)) if fact_scores else 10
+    avg_risk = int(sum(risk_scores) / len(risk_scores)) if risk_scores else 5
+    avg_accuracy = int(sum(accuracy_scores) / len(accuracy_scores)) if accuracy_scores else 95
     final_summary = " ".join(summaries)
     
     final_eval = {
         "summary": final_summary[:500] + "..." if len(final_summary) > 500 else final_summary,
         "claims_evaluated": all_claims,
         "fabrication_risk_score": avg_risk,
-        "fact_score": avg_fact
+        "accuracy_score": avg_accuracy
     }
     return {"fact_check_eval": final_eval}
 
@@ -372,12 +393,14 @@ async def authenticity_node(state: GraphState):
     grammar_summary = state.get("grammar_eval", {}).get("summary", "None") if state.get("grammar_eval") else "None"
     novelty_summary = state.get("novelty_eval", {}).get("summary", "None") if state.get("novelty_eval") else "None"
     fact_check_summary = state.get("fact_check_eval", {}).get("summary", "None") if state.get("fact_check_eval") else "None"
+    current_time = get_utc_now()
     
     prompt_vars = {
         "consistency_summary": consistency_summary,
         "grammar_summary": grammar_summary,
         "novelty_summary": novelty_summary,
-        "fact_check_summary": fact_check_summary
+        "fact_check_summary": fact_check_summary,
+        "current_utc_time": current_time
     }
     
     prompt = build_authenticity_prompt(prompt_vars)
@@ -422,18 +445,28 @@ def report_node(state: GraphState):
             grammar=grammar_eval
         )
         
-        # Format as Markdown
+        # Format as Markdown according to NEW REQUIREMENTS
         md_content = f"# Judgement Report: {final_report.paper_title}\n\n"
         md_content += f"**Verdict:** {final_report.final_verdict}\n\n"
-        md_content += f"**Overall Score:** {final_report.overall_score:.1f}/10\n"
-        md_content += f"**Fabrication Risk:** {final_report.fabrication_probability:.1f}%\n\n"
+        md_content += f"**Overall Quality Score:** {final_report.overall_score:.1f}/100\n\n"
+        
         md_content += f"## Executive Summary\n{final_report.executive_summary}\n\n"
-        md_content += f"## Detailed Metrics\n"
-        md_content += f"- **Consistency Score:** {final_report.consistency_metrics.consistency_score}/10\n"
-        md_content += f"- **Novelty Score:** {final_report.novelty_metrics.novelty_score}/10\n"
-        md_content += f"- **Fact-Checking Score:** {final_report.fact_checking_metrics.fact_score}/10\n"
+        
+        md_content += f"## Detailed Scores\n"
+        md_content += f"- **Consistency Score:** {final_report.consistency_metrics.consistency_score}/100\n"
         if grammar_eval:
-            md_content += f"- **Grammar Score:** {final_report.grammar_metrics.grammar_score}/10\n"
+            md_content += f"- **Grammar Rating:** {final_report.grammar_metrics.grammar_rating}\n"
+        md_content += f"- **Novelty Index:** {final_report.novelty_metrics.novelty_index}\n"
+        
+        md_content += f"\n## Fact Check Log\n"
+        for claim in final_report.fact_checking_metrics.claims_evaluated:
+            status_icon = "✅" if claim.verdict == "supported" else "❌" if claim.verdict == "contradicted" else "⚠️"
+            md_content += f"- {status_icon} **{claim.claim}**\n"
+            md_content += f"  - *Verdict:* {claim.verdict}\n"
+            md_content += f"  - *Evidence:* {claim.evidence}\n"
+            
+        md_content += f"\n**Accuracy Score:** {final_report.accuracy_score:.1f}/100\n"
+        md_content += f"**Fabrication Risk:** {final_report.fabrication_risk:.1f}%\n"
             
         # Write to disk
         os.makedirs("reports", exist_ok=True)
@@ -454,7 +487,11 @@ def report_node(state: GraphState):
         except Exception as e:
             logger.warning(f"Could not generate PDF (WeasyPrint may be missing dependencies): {e}")
             
-        return {"final_report": md_content}
+        return {
+            "final_report": md_content,
+            "final_verdict": final_report.final_verdict,
+            "overall_score": final_report.overall_score
+        }
     except Exception as e:
         logger.error(f"Report generation failed: {e}")
         return {"errors": state.get("errors", []) + [f"Report Gen Error: {str(e)}"]}

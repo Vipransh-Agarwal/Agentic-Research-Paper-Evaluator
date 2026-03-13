@@ -23,7 +23,7 @@ def mock_llm_response_consistency():
         "summary": "The paper is consistent.",
         "issues": [],
         "strengths": ["Clear structure"],
-        "consistency_score": 9
+        "consistency_score": 90
     }
 
 @pytest.fixture
@@ -31,7 +31,7 @@ def mock_llm_response_grammar():
     return {
         "summary": "Good grammar.",
         "issues": [],
-        "grammar_score": 8
+        "grammar_rating": "High"
     }
 
 @pytest.fixture
@@ -40,7 +40,7 @@ def mock_llm_response_novelty():
         "summary": "Very novel.",
         "findings": [{"aspect": "Methodology", "novelty_level": "high", "justification": "New method proposed"}],
         "similar_works_referenced": True,
-        "novelty_score": 8
+        "novelty_index": "Breakthrough: New method proposed"
     }
 
 @pytest.fixture
@@ -48,8 +48,8 @@ def mock_llm_response_fact_check():
     return {
         "summary": "Facts seem correct.",
         "claims_evaluated": [{"claim": "X=Y", "verdict": "supported", "evidence": "Because math.", "confidence": "high"}],
-        "fabrication_risk_score": 2,
-        "fact_score": 9
+        "fabrication_risk_score": 5,
+        "accuracy_score": 95
     }
 
 @pytest.fixture

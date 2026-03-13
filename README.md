@@ -1,168 +1,91 @@
 # Agentic Research Paper Evaluator
 
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![Framework: CrewAI/LangGraph](https://img.shields.io/badge/Framework-CrewAI%20%7C%20LangGraph-FF6F00?logo=langchain&logoColor=white)](https://langchain.com/)
+[![Framework: LangGraph](https://img.shields.io/badge/Framework-LangGraph-FF6F00?logo=langchain&logoColor=white)](https://langchain.com/)
 [![LLM: Gemini / OpenRouter](https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenRouter-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A multi-agent AI system that autonomously scrapes an arXiv link, decomposes the paper, and executes a comprehensive peer-review simulation across specialized domains to produce a detailed "Judgement Report".
+A multi-agent AI system that autonomously scrapes an arXiv link, decomposes the paper, and executes a comprehensive peer-review simulation across specialized domains to produce a detailed **Judgement Report**.
 
-## Features
+## 🚀 Key Features
 
 - ✨ **Autonomous Scraping**: Extracts raw text natively from arXiv HTML endpoints, with a robust PDF fallback using PyMuPDF.
-- 🚀 **Multi-Agent Evaluation**: Simulates peer-review across 5 specific domains: Consistency, Grammar, Novelty, Fact-Checking, and Authenticity.
+- 🤖 **Multi-Agent Evaluation**: Simulates peer-review across 5 specific domains:
+    - **Consistency**: 0-100 score on logical flow.
+    - **Grammar**: Categorical rating (High/Medium/Low).
+    - **Novelty Index**: Qualitative impact description.
+    - **Fact-Checking**: Interactive log of verified vs. unverified claims.
+    - **Authenticity**: Percentage-based fabrication risk assessment.
+- 🕒 **Context Aware**: All agents are UTC-time aware for accurate evaluation of "recent" vs "past" works.
 - 🔒 **Context Window Safety**: Intelligently chunks documents to strictly enforce a maximum 16,000 token limit per LLM call.
-- 📦 **API Rate-Limit Resilience**: Built-in 4-second pacing, exponential backoff, and caching to operate reliably under Gemini's free-tier (15 RPM) limits.
-- 📊 **Structured Judgement Report**: Generates a final `.md` artifact containing an Executive Summary, detailed metrics, and a calculated Fabricability risk score.
+- 🌡️ **Precision-Tuned**: Optimized temperatures (0.0 for facts, 0.2 for analysis) to ensure JSON reliability and factual rigor.
+- 📊 **Rich Dashboard**: Streamlit-based UI with metric cards, color-coded Pass/Fail verdicts, and a visual Fact Check Log.
 
-## Quick Start
+## 🛠️ Quick Start
 
 ```bash
 git clone https://github.com/your-username/agentic-research-paper-evaluator.git
 cd agentic-research-paper-evaluator
-python -m venv venv
-# On Windows: venv\Scripts\activate
-# On macOS/Linux: source venv/bin/activate
+python -m venv .venv
+# On Windows: .venv\Scripts\activate
+# On macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Add your Gemini/OpenRouter API key to .env
+# Add your GEMINI_API_KEY to .env
 streamlit run app.py
 ```
 
-## Installation
+## 📊 Dashboard Features
 
-### Prerequisites
-
-- Python 3.11 or higher
-- Git
-
-### Setup for First-Time Users
-
-1. **Clone & Navigate**:
-   ```bash
-   git clone https://github.com/your-username/agentic-research-paper-evaluator.git
-   cd agentic-research-paper-evaluator
-   ```
-
-2. **Environment Setup**:
-   Create a virtual environment to keep dependencies isolated.
-   ```bash
-   python -m venv venv
-   # Windows
-   venv\Scripts\activate
-   # macOS/Linux
-   source venv/bin/activate
-   ```
-
-3. **Install Dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **API Configuration**:
-   Copy the example environment file and add your keys.
-   ```bash
-   cp .env.example .env
-   ```
-   Open `.env` and fill in `GEMINI_API_KEY` (or `OPENROUTER_API_KEY`).
-
-5. **Launch the UI**:
-   ```bash
-   streamlit run app.py
-   ```
-
-## Usage
-
-### Web Interface (Recommended)
-
-The easiest way to use the evaluator is through the Streamlit dashboard:
-
-1. Run `streamlit run app.py`.
-2. Open the URL provided in your terminal (usually `http://localhost:8501`).
-3. Enter a valid arXiv URL (e.g., `https://arxiv.org/abs/1706.03762`).
-4. Click **Evaluate Paper** and watch the multi-agent orchestration in real-time.
-5. View scores and the full Judgement Report directly in the browser.
-
-### Command Line Interface
-
-You can also run the evaluation directly from the terminal:
-
-```bash
-python src/main.py --url https://arxiv.org/abs/1706.03762
-```
-
-The system will display progress as it scrapes and reviews the paper. A Markdown report will be generated in the `reports/` directory.
-
-## Dashboard Features
-
-- 🖥️ **Real-time Status**: Track LangGraph node execution (Scraping -> Analyzing -> Reporting) with live updates.
-- 📊 **Metric Cards**: High-level scores for Consistency, Grammar, Novelty, and Factuality displayed in a clean dashboard.
+- 🖥️ **Real-time Status**: Track LangGraph node execution (Scrape -> Decompose -> Analyze -> Report) with live updates.
+- 🚦 **Verdict Alert**: Immediate color-coded recommendation (Accept, Minor Revisions, Major Revisions, or Reject).
+- ✅ **Fact Check Log**: Visual checklist of claims with icons (✅ supported, ❌ contradicted, ⚠️ needs verification).
 - 📝 **Interactive Report**: Full Markdown rendering of the generated Judgement Report within the UI.
-- 🛡️ **Risk Highlighting**: Clear visibility of the calculated Fabrication Risk score.
 
-## Benchmarks & Existing Reports
+## 🏗️ Architecture
 
-The system has been benchmarked against foundational research papers. You can find pre-generated reports in the following locations:
-
-- **Benchmark Papers**:
-  - [Judgement_Report_1706.03762_Attention_Is_All_You_Need.md](./benchmarks/Judgement_Report_1706.03762_Attention_Is_All_You_Need.md)
-- **Recently Generated Reports**:
-  - [Judgement_Report_1706.03762.md](./reports/Judgement_Report_1706.03762.md)
-  - [Judgement_Report_2603.11152.md](./reports/Judgement_Report_2603.11152.md)
-
-Every evaluation run saves its final output to the `reports/` directory as a Markdown file for offline viewing.
-
-## Architecture
-
-The system utilizes a modular, agent-centric architecture orchestrated by LangGraph/CrewAI:
+The system utilizes a modular, agent-centric architecture orchestrated by **LangGraph**:
 
 ```text
 .
 ├── app.py                  # Streamlit Dashboard UI
 ├── requirements.txt        # Project dependencies
-├── benchmarks/             # Reference judgement reports
-├── docs/                   # Architecture and PRD documentation
-├── reports/                # Generated Judgement Reports (.md)
-├── scripts/                # Utility scripts (benchmarking, etc.)
+├── benchmarks/             # Reference judgement reports (e.g., Attention Is All You Need)
+├── docs/                   # Detailed PRD and Architecture Design
+├── reports/                # Generated Judgement Reports (.md & .pdf)
 ├── src/                    # Core source code
-│   ├── main.py             # CLI Entrypoint & Argument Parsing
-│   ├── agents/             # Agent definitions & logic
-│   │   └── prompt_templates/ # Domain-specific prompts
-│   │       ├── authenticity.py  # Calculates Fabricability probability
-│   │       ├── consistency.py   # Checks logical flow between sections
-│   │       ├── fact_checking.py # Verifies key claims
-│   │       ├── grammar.py       # Evaluates writing quality
-│   │       └── novelty.py       # Assesses uniqueness against prior work
-│   ├── orchestrator/       # LangGraph workflow orchestration
-│   │   └── workflow.py     # Agent graph definition and state management
-│   ├── output/             # Report generation & extraction
-│   │   └── extractor.py    # Report compilation into MD
-│   ├── processing/         # Text chunking & token management
-│   │   └── chunker.py      # 16k token limit enforcement & text sectioning
-│   └── scraper/            # arXiv scraping & PDF fallback
-│       ├── arxiv_scraper.py# URL fetching, HTML parsing (ar5iv), PDF fallback
-│       └── tools.py        # Scraping utilities and tool definitions
-└── tests/                  # Pytest suite (Unit & E2E)
+│   ├── main.py             # CLI Entrypoint
+│   ├── agents/             # Agent definitions & prompt templates
+│   │   └── prompt_templates/ 
+│   │       ├── authenticity.py  # Fabrication risk synthesis
+│   │       ├── consistency.py   # Logical flow (0-100)
+│   │       ├── fact_checking.py # Claim verification (Temp 0.0)
+│   │       ├── grammar.py       # categorical rating
+│   │       └── novelty.py       # Qualitative description
+│   ├── orchestrator/       # LangGraph workflow orchestration (UTC aware)
+│   ├── output/             # Report aggregation & JSON extraction
+│   ├── processing/         # 16k token chunking logic
+│   └── scraper/            # arXiv HTML/PDF extraction engine
+└── tests/                  # Pytest suite (11+ passed tests)
 ```
 
-## Development
+## 🧪 Development & Testing
 
 ### Running Tests
-
-To run the test suite against a known benchmark arXiv paper:
-
+The project includes a comprehensive test suite covering scrapers, agents, and end-to-end workflows:
 ```bash
-pytest tests/
+python -m pytest
 ```
 
-### Extending Agents
+### Running Benchmarks
+Evaluate a foundational paper (e.g., Transformer paper) to verify system quality:
+```bash
+python scripts/run_benchmark.py
+```
 
-To add a new evaluation dimension, create a new prompt template in `src/agents/prompt_templates/` and register the agent within `src/orchestrator/workflow.py`. Ensure the agent's output conforms to the structured data expectations of the `extractor.py`.
-
-## License
+## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
-
-Made with ❤️
+Made with ❤️ by the Agentic AI Team

@@ -20,7 +20,7 @@ from src.agents.prompt_templates import (
 
 class AgentMetric(BaseModel):
     agent_name: str = Field(..., description="Name of the evaluating agent")
-    score: int = Field(..., ge=1, le=10, description="Score given by the agent (1-10)")
+    score: float = Field(..., description="Score given by the agent")
     summary: str = Field(..., description="Brief summary of the agent's findings")
     key_issues: List[str] = Field(default_factory=list, description="Key issues found by the agent")
 
@@ -36,8 +36,9 @@ class FinalJudgementReport(BaseModel):
     grammar_metrics: Optional[GrammarEvaluation] = None
     
     # Final Calculated Scores
-    overall_score: float = Field(..., description="Weighted average of agent scores (out of 10)")
-    fabrication_probability: float = Field(..., description="Calculated risk of fabrication (percentage 0-100%)")
+    overall_score: float = Field(..., description="Overall quality score (0-100)")
+    accuracy_score: float = Field(..., description="Calculated accuracy score (0-100)")
+    fabrication_risk: float = Field(..., description="Calculated risk of fabrication (percentage 0-100%)")
     
     # Recommendation
     final_verdict: str = Field(..., description="Final recommendation: 'Accept', 'Minor Revisions', 'Major Revisions', or 'Reject'")
@@ -98,12 +99,12 @@ def calculate_fabrication_probability(fact_metrics: FactCheckingEvaluation) -> f
     Calculates a fabrication probability percentage based on fact-checking risk scores
     and the severity of contradictions found.
     """
-    base_risk = (fact_metrics.fabrication_risk_score / 10.0) * 100
+    base_risk = float(fact_metrics.fabrication_risk_score)
     
     # Add weight for explicitly contradicted claims
     contradictions = sum(1 for claim in fact_metrics.claims_evaluated if claim.verdict == "contradicted")
     if contradictions > 0:
-        base_risk += (contradictions * 10)
+        base_risk += (contradictions * 20)
         
     return min(100.0, base_risk)
 
@@ -119,35 +120,43 @@ def generate_final_report(
     Aggregates individual agent evaluations into the final Judgement Report structure.
     """
     
-    # Calculate Overall Score (Simple Average for now, can be weighted)
+    # Calculate Overall Score (Weighted Average)
+    # Since novelty_index is qualitative, we use it for summary but don't average it numerically
+    # If we need a numerical score for novelty for the 'overall_score', we might have to re-introduce it 
+    # or rely on other metrics. For now, let's average consistency and accuracy.
+    
     scores = [
-        consistency.consistency_score,
-        novelty.novelty_score,
-        fact_checking.fact_score
+        float(consistency.consistency_score),
+        float(fact_checking.accuracy_score)
     ]
+    # Map grammar rating to score for overall calculation
     if grammar:
-        scores.append(grammar.grammar_score)
+        grammar_map = {"High": 100.0, "Medium": 70.0, "Low": 40.0}
+        scores.append(grammar_map.get(grammar.grammar_rating, 50.0))
         
     overall_avg = sum(scores) / len(scores)
     
-    # Calculate Fabrication Probability
-    fab_prob = calculate_fabrication_probability(fact_checking)
+    # Calculate Fabrication Risk
+    fab_risk = calculate_fabrication_probability(fact_checking)
     
     # Determine Verdict
-    if fab_prob > 50.0 or overall_avg < 4.0:
+    if fab_risk > 50.0 or overall_avg < 40.0:
         verdict = "Reject"
-    elif overall_avg < 6.0:
+    elif overall_avg < 60.0:
         verdict = "Major Revisions"
-    elif overall_avg < 8.0:
+    elif overall_avg < 80.0:
         verdict = "Minor Revisions"
     else:
         verdict = "Accept"
         
     # Generate Executive Summary
+    grammar_str = f"Grammar is rated as {grammar.grammar_rating}. " if grammar else ""
     exec_summary = (
-        f"This paper achieved an overall score of {overall_avg:.1f}/10. "
-        f"Consistency is rated at {consistency.consistency_score}/10, with novelty at {novelty.novelty_score}/10. "
-        f"Fact-checking yielded a score of {fact_checking.fact_score}/10, resulting in a calculated fabrication risk of {fab_prob:.1f}%. "
+        f"This paper achieved an overall quality score of {overall_avg:.1f}/100. "
+        f"Consistency score: {consistency.consistency_score}/100. "
+        f"{grammar_str}"
+        f"Novelty Index: {novelty.novelty_index}. "
+        f"Accuracy score: {fact_checking.accuracy_score}/100 with a calculated fabrication risk of {fab_risk:.1f}%. "
         f"Based on these metrics, the final recommendation is to {verdict}."
     )
 
@@ -160,6 +169,7 @@ def generate_final_report(
         fact_checking_metrics=fact_checking,
         grammar_metrics=grammar,
         overall_score=overall_avg,
-        fabrication_probability=fab_prob,
+        accuracy_score=fact_checking.accuracy_score,
+        fabrication_risk=fab_risk,
         final_verdict=verdict
     )

@@ -70,8 +70,9 @@ def main():
             "arxiv_id": result.get("arxiv_id"),
             "chunk_count": len(result.get("chunks", [])),
             "consistency_score": result.get("consistency_eval", {}).get("consistency_score") if result.get("consistency_eval") else None,
-            "novelty_score": result.get("novelty_eval", {}).get("novelty_score") if result.get("novelty_eval") else None,
-            "fact_check_score": result.get("fact_check_eval", {}).get("fact_score") if result.get("fact_check_eval") else None,
+            "grammar_rating": result.get("grammar_eval", {}).get("grammar_rating") if result.get("grammar_eval") else None,
+            "novelty_index": result.get("novelty_eval", {}).get("novelty_index") if result.get("novelty_eval") else None,
+            "accuracy_score": result.get("fact_check_eval", {}).get("accuracy_score") if result.get("fact_check_eval") else None,
             "fabrication_probability": result.get("authenticity_eval", {}).get("fabrication_probability") if result.get("authenticity_eval") else None
         }
         console.print_json(data=dump_state)

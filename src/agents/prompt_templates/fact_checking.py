@@ -15,8 +15,8 @@ class FactCheckClaim(BaseModel):
 class FactCheckingEvaluation(BaseModel):
     summary: str = Field(..., description="Brief overview of the paper's factual accuracy")
     claims_evaluated: List[FactCheckClaim] = Field(default_factory=list, description="List of evaluated claims")
-    fabrication_risk_score: int = Field(..., ge=1, le=10, description="Risk score for fabricated or hallucinated data/citations (1=low risk, 10=high risk)")
-    fact_score: int = Field(..., ge=1, le=10, description="Overall factual correctness score from 1-10")
+    fabrication_risk_score: int = Field(..., ge=0, le=100, description="Risk score for fabricated or hallucinated data/citations (0-100%)")
+    accuracy_score: int = Field(..., ge=0, le=100, description="Overall factual accuracy score from 0-100")
 
 # ---------------------------------------------------------
 # Prompt Variables Validation
@@ -26,6 +26,7 @@ class FactCheckingPromptVariables(BaseModel):
     paper_text: str
     extract_count: Optional[int] = 5
     external_knowledge_allowed: Optional[bool] = True
+    current_utc_time: str
 
 # ---------------------------------------------------------
 # Few-Shot Examples
@@ -49,8 +50,8 @@ Text: "As established by Einstein's theory of general relativity (1915), massive
       "confidence": "high"
     }
   ],
-  "fabrication_risk_score": 1,
-  "fact_score": 10
+  "fabrication_risk_score": 5,
+  "accuracy_score": 95
 }
 ```
 
@@ -71,8 +72,8 @@ Text: "Recent studies (Smith & Doe, 2024) have shown that drinking liquid mercur
       "confidence": "high"
     }
   ],
-  "fabrication_risk_score": 9,
-  "fact_score": 2
+  "fabrication_risk_score": 90,
+  "accuracy_score": 10
 }
 ```
 """
@@ -83,8 +84,10 @@ Text: "Recent studies (Smith & Doe, 2024) have shown that drinking liquid mercur
 
 FACT_CHECKING_PROMPTS = {
     "v1.0": {
-        "system": """
+        "system": lambda vars: f"""
 # System Prompt: Research Paper Fact-Checker
+
+Current UTC Time: {vars.current_utc_time} (All your analysis must be context-aware of this date).
 
 You are an expert fact-checker for academic research papers. Your role is to identify verifiable claims (historical dates, known scientific constants, established theories, citations) and evaluate their factual accuracy based on your broad internal knowledge base.
 
@@ -93,19 +96,19 @@ You are an expert fact-checker for academic research papers. Your role is to ide
 Provide your evaluation strictly in the following JSON structure:
 
 ```json
-{
+{{
   "summary": "Brief overview of the paper's factual accuracy",
   "claims_evaluated": [
-    {
+    {{
       "claim": "The extracted claim",
       "verdict": "supported|unsupported|contradicted|needs_verification",
       "evidence": "Evidence or reasoning",
       "confidence": "high|medium|low"
-    }
+    }}
   ],
-  "fabrication_risk_score": 1-10 (integer),
-  "fact_score": 1-10 (integer)
-}
+  "fabrication_risk_score": 0-100 (percentage),
+  "accuracy_score": 0-100 (integer)
+}}
 ```
 
 ## Style Guidelines
@@ -139,7 +142,7 @@ def build_fact_checking_prompt(vars_dict: dict, version: str = "v1.0") -> dict:
         raise ValueError(f"Version {version} not found in FACT_CHECKING_PROMPTS")
     template = FACT_CHECKING_PROMPTS[version]
     return {
-        "system": template["system"],
+        "system": template["system"](valid_vars),
         "user": template["user"](valid_vars)
     }
 

@@ -107,10 +107,30 @@ if submit_button:
             else:
                 st.success("Analysis complete!")
                 
+                # --- HIGHLIGHT: VERDICT & OVERALL SCORE ---
+                verdict = final_state.get("final_verdict", "N/A")
+                overall_score = final_state.get("overall_score", "N/A")
+                
                 st.divider()
                 
-                # Output: Multi-column dashboard showing the scores
-                st.subheader("Key Metrics")
+                v_col1, v_col2 = st.columns([2, 1])
+                with v_col1:
+                    if verdict == "Accept":
+                        st.success(f"### Recommendation: {verdict}")
+                    elif verdict == "Minor Revisions":
+                        st.info(f"### Recommendation: {verdict}")
+                    elif verdict == "Major Revisions":
+                        st.warning(f"### Recommendation: {verdict}")
+                    else:
+                        st.error(f"### Recommendation: {verdict}")
+                
+                with v_col2:
+                    st.metric("Overall Quality Score", f"{overall_score:.1f}/100" if isinstance(overall_score, (int, float)) else "N/A", border=True)
+
+                st.divider()
+                
+                # --- DETAILED SCORES ---
+                st.subheader("Detailed Metrics")
                 
                 # Extract scores safely
                 consistency_eval = final_state.get("consistency_eval") or {}
@@ -120,54 +140,55 @@ if submit_button:
                 authenticity_eval = final_state.get("authenticity_eval") or {}
 
                 consistency_score = consistency_eval.get("consistency_score", "N/A")
-                grammar_score = grammar_eval.get("grammar_score", "N/A")
-                novelty_score = novelty_eval.get("novelty_score", "N/A")
-                fact_score = fact_check_eval.get("fact_score", "N/A")
+                grammar_rating = grammar_eval.get("grammar_rating", "N/A")
+                novelty_index = novelty_eval.get("novelty_index", "N/A")
+                accuracy_score = fact_check_eval.get("accuracy_score", "N/A")
                 
-                # Depending on how fabrication risk is output in your workflow
-                # Fact check node has fabrication_risk_score
-                # Authenticity node has fabrication_probability
                 risk_score = fact_check_eval.get("fabrication_risk_score", "N/A")
                 authenticity_prob = authenticity_eval.get("fabrication_probability", "N/A")
-                
                 final_fabrication_risk = authenticity_prob if authenticity_prob != "N/A" else risk_score
 
-                # Layout using columns with border=True cards
+                # Layout using columns
                 cols = st.columns(4)
-                
                 with cols[0]:
-                    st.metric(label="Consistency", value=f"{consistency_score}/10" if consistency_score != "N/A" else "N/A", border=True)
+                    st.metric(label="Consistency", value=f"{consistency_score}/100" if consistency_score != "N/A" else "N/A", border=True)
                 with cols[1]:
-                    st.metric(label="Grammar", value=f"{grammar_score}/10" if grammar_score != "N/A" else "N/A", border=True)
+                    st.metric(label="Grammar Rating", value=str(grammar_rating), border=True)
                 with cols[2]:
-                    st.metric(label="Novelty", value=f"{novelty_score}/10" if novelty_score != "N/A" else "N/A", border=True)
+                    st.metric(label="Accuracy Score", value=f"{accuracy_score}/100" if accuracy_score != "N/A" else "N/A", border=True)
                 with cols[3]:
-                    st.metric(label="Factuality", value=f"{fact_score}/10" if fact_score != "N/A" else "N/A", border=True)
+                    st.metric(label="Fabrication Risk", value=f"{final_fabrication_risk}%" if final_fabrication_risk != "N/A" else "N/A", border=True)
                 
-                # Highlight fabrication risk
-                with st.container(border=True):
-                    st.metric(label="Fabrication Risk Score", value=f"{final_fabrication_risk}%" if final_fabrication_risk != "N/A" else "N/A")
+                # Novelty Index & Executive Summary
+                st.markdown(f"**Novelty Index:** {novelty_index}")
+                
+                with st.expander("View Executive Summary"):
+                    # Find summary from report or state
+                    st.write(final_state.get("consistency_eval", {}).get("summary", "No summary available."))
 
                 st.divider()
                 
-                # Output: Full Markdown area for the 'Judgement Report'
-                st.subheader("Judgement Report")
-                
-                report_content = final_state.get("final_report")
-                
-                if report_content:
-                    with st.container(border=True):
-                        st.markdown(report_content)
+                # --- FACT CHECK LOG ---
+                st.subheader("Fact Check Log")
+                claims = fact_check_eval.get("claims_evaluated", [])
+                if claims:
+                    for claim in claims:
+                        with st.container(border=True):
+                            c1, c2 = st.columns([0.1, 0.9])
+                            icon = "✅" if claim['verdict'] == "supported" else "❌" if claim['verdict'] == "contradicted" else "⚠️"
+                            c1.markdown(f"### {icon}")
+                            c2.markdown(f"**Claim:** {claim['claim']}")
+                            c2.markdown(f"*Verdict:* {claim['verdict'].capitalize()} | *Confidence:* {claim['confidence'].capitalize()}")
+                            c2.info(f"**Evidence:** {claim['evidence']}")
                 else:
-                    # Fallback to reading the file if it wasn't captured in state
-                    arxiv_id = final_state.get("arxiv_id")
-                    if arxiv_id:
-                        report_path = f"reports/Judgement_Report_{arxiv_id}.md"
-                        if os.path.exists(report_path):
-                            with open(report_path, "r", encoding="utf-8") as f:
-                                with st.container(border=True):
-                                    st.markdown(f.read())
-                        else:
-                            st.info("No report content found.")
-                    else:
-                        st.info("No report content found.")
+                    st.info("No claims were extracted for fact-checking.")
+
+                st.divider()
+                
+                # --- FULL REPORT ---
+                st.subheader("Complete Judgement Report")
+                report_content = final_state.get("final_report")
+                if report_content:
+                    st.markdown(report_content)
+                else:
+                    st.info("No detailed report content found.")

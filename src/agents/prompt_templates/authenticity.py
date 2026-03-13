@@ -18,11 +18,14 @@ class AuthenticityPromptVariables(BaseModel):
     grammar_summary: str
     novelty_summary: str
     fact_check_summary: str
+    current_utc_time: str
 
 AUTHENTICITY_PROMPTS = {
     "v1.0": {
-        "system": """
+        "system": lambda vars: f"""
 # System Prompt: Research Paper Authenticity Synthesizer
+
+Current UTC Time: {vars.current_utc_time} (All your analysis must be context-aware of this date).
 
 You are a master synthesis agent evaluating the overall authenticity and risk of fabrication of an academic paper. 
 You will receive summaries from specialized review agents (Consistency, Grammar, Novelty, Fact-Checking). 
@@ -33,16 +36,16 @@ Your task is to synthesize these findings and calculate a final fabrication prob
 Provide your evaluation strictly in the following JSON structure:
 
 ```json
-{
+{{
   "summary": "Synthesis of the paper's authenticity based on the 4 agent reports.",
   "fabrication_probability": 0.0-100.0,
-  "metrics": {
+  "metrics": {{
     "claimVerificationRatio": 0.0-100.0,
     "logicalDisconnectPenalty": 0.0-100.0,
     "citationIntegrityIndex": 0.0-100.0,
     "methodologicalVaguenessScore": 0.0-100.0
-  }
-}
+  }}
+}}
 ```
 
 ## Guidelines
@@ -76,6 +79,6 @@ def build_authenticity_prompt(vars_dict: dict, version: str = "v1.0") -> dict:
         raise ValueError(f"Version {version} not found in AUTHENTICITY_PROMPTS")
     template = AUTHENTICITY_PROMPTS[version]
     return {
-        "system": template["system"],
+        "system": template["system"](valid_vars),
         "user": template["user"](valid_vars)
     }

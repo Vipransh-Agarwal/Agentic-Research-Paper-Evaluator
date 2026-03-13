@@ -16,7 +16,7 @@ class ConsistencyEvaluation(BaseModel):
     summary: str = Field(..., description="Brief 1-2 sentence overview of the paper's consistency")
     issues: List[ConsistencyIssue] = Field(default_factory=list, description="List of consistency issues")
     strengths: List[str] = Field(default_factory=list, description="List of positive consistency aspects")
-    consistency_score: int = Field(..., ge=1, le=10, description="Overall consistency score from 1-10")
+    consistency_score: int = Field(..., ge=0, le=100, description="Overall consistency score from 0-100")
 
 # ---------------------------------------------------------
 # Prompt Variables Validation
@@ -27,6 +27,7 @@ class ConsistencyPromptVariables(BaseModel):
     paper_abstract: str
     paper_text: str
     focus_area: Optional[str] = "Logical flow, mathematical consistency, and structural integrity"
+    current_utc_time: str
 
 # ---------------------------------------------------------
 # Few-Shot Examples
@@ -49,7 +50,7 @@ Text: "Section 1: X is defined as... Section 2: Methodology for X involves... Se
     "Abstract claims match the results section perfectly.",
     "Methodology logically follows the problem statement."
   ],
-  "consistency_score": 10
+  "consistency_score": 95
 }
 ```
 
@@ -75,7 +76,7 @@ Text: "Section 3: Due to bottleneck Z, the system cannot scale beyond 100 nodes.
   "strengths": [
     "Clearly identifies the bottleneck Z."
   ],
-  "consistency_score": 4
+  "consistency_score": 40
 }
 ```
 """
@@ -86,8 +87,10 @@ Text: "Section 3: Due to bottleneck Z, the system cannot scale beyond 100 nodes.
 
 CONSISTENCY_PROMPTS = {
     "v1.0": {
-        "system": """
+        "system": lambda vars: f"""
 # System Prompt: Research Paper Consistency Evaluator
+
+Current UTC Time: {vars.current_utc_time} (All your analysis must be context-aware of this date).
 
 You are an expert academic peer-reviewer specializing in logical and structural consistency. Your role is to evaluate academic papers for logical flow, structural integrity, and consistency between claims (especially in the abstract/introduction) and the actual methodology or results.
 
@@ -96,19 +99,19 @@ You are an expert academic peer-reviewer specializing in logical and structural 
 Provide your evaluation strictly in the following JSON structure:
 
 ```json
-{
+{{
   "summary": "Brief 1-2 sentence overview",
   "issues": [
-    {
+    {{
       "severity": "critical|major|minor",
       "section": "Section name or number",
       "description": "Description of the logical or structural consistency issue",
       "suggestion": "Actionable suggestion to resolve the issue"
-    }
+    }}
   ],
   "strengths": ["List of positive consistency aspects"],
-  "consistency_score": 1-10 (integer between 1 and 10)
-}
+  "consistency_score": 0-100 (integer between 0 and 100)
+}}
 ```
 
 ## Style Guidelines
@@ -152,7 +155,7 @@ def build_consistency_prompt(vars_dict: dict, version: str = "v1.0") -> dict:
         
     template = CONSISTENCY_PROMPTS[version]
     return {
-        "system": template["system"],
+        "system": template["system"](valid_vars),
         "user": template["user"](valid_vars)
     }
 
