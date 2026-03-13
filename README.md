@@ -1,6 +1,6 @@
 # Agentic Research Paper Evaluator
 
-[![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Framework: CrewAI/LangGraph](https://img.shields.io/badge/Framework-CrewAI%20%7C%20LangGraph-FF6F00?logo=langchain&logoColor=white)](https://langchain.com/)
 [![LLM: Gemini / OpenRouter](https://img.shields.io/badge/LLM-Gemini%20%7C%20OpenRouter-4285F4?logo=google&logoColor=white)](https://ai.google.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -32,7 +32,7 @@ python src/main.py --url https://arxiv.org/abs/2303.08774
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - Git
 
 ### From Source
@@ -120,24 +120,10 @@ pytest tests/
 
 To add a new evaluation dimension, create a new prompt template in `src/agents/prompt_templates/` and register the agent within `src/orchestrator/workflow.py`. Ensure the agent's output conforms to the structured data expectations of the `extractor.py`.
 
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-new-feature`
-3. Commit your changes: `git commit -am 'Add some feature'`
-4. Push to the branch: `git push origin feature/my-new-feature`
-5. Submit a pull request
-
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Support
-
-- 📖 Issues: [GitHub Issues](https://github.com/your-username/agentic-research-paper-evaluator/issues)
-
 ---
 
-Made with ❤️ by the Agentic AI Team
+Made with ❤️
