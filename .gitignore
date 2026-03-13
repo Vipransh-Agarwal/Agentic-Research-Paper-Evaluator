@@ -41,7 +41,7 @@ Judgement_Report.pdf
 *.log
 *.tmp
 
-#Cache files
+# Cache files
 .cache/
 .mo/
 
