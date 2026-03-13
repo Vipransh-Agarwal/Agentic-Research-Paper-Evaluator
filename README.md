@@ -13,7 +13,7 @@ A multi-agent AI system that autonomously scrapes an arXiv link, decomposes the 
 - 🚀 **Multi-Agent Evaluation**: Simulates peer-review across 5 specific domains: Consistency, Grammar, Novelty, Fact-Checking, and Authenticity.
 - 🔒 **Context Window Safety**: Intelligently chunks documents to strictly enforce a maximum 16,000 token limit per LLM call.
 - 📦 **API Rate-Limit Resilience**: Built-in 4-second pacing, exponential backoff, and caching to operate reliably under Gemini's free-tier (15 RPM) limits.
-- 📊 **Structured Judgement Report**: Generates a final `.md` or `.pdf` artifact containing an Executive Summary, detailed metrics, and a calculated Fabricability risk score.
+- 📊 **Structured Judgement Report**: Generates a final `.md` artifact containing an Executive Summary, detailed metrics, and a calculated Fabricability risk score.
 
 ## Quick Start
 
@@ -21,11 +21,12 @@ A multi-agent AI system that autonomously scrapes an arXiv link, decomposes the 
 git clone https://github.com/your-username/agentic-research-paper-evaluator.git
 cd agentic-research-paper-evaluator
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# On Windows: venv\Scripts\activate
+# On macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Add your Gemini API key to .env
-python src/main.py --url https://arxiv.org/abs/2303.08774
+# Add your Gemini/OpenRouter API key to .env
+streamlit run app.py
 ```
 
 ## Installation
@@ -35,52 +36,81 @@ python src/main.py --url https://arxiv.org/abs/2303.08774
 - Python 3.11 or higher
 - Git
 
-### From Source
+### Setup for First-Time Users
 
-```bash
-# Clone the repository
-git clone https://github.com/your-username/agentic-research-paper-evaluator.git
-cd agentic-research-paper-evaluator
+1. **Clone & Navigate**:
+   ```bash
+   git clone https://github.com/your-username/agentic-research-paper-evaluator.git
+   cd agentic-research-paper-evaluator
+   ```
 
-# Create and activate a virtual environment
-python -m venv venv
-# Linux/macOS
-source venv/bin/activate
-# Windows
-venv\Scripts\activate
+2. **Environment Setup**:
+   Create a virtual environment to keep dependencies isolated.
+   ```bash
+   python -m venv venv
+   # Windows
+   venv\Scripts\activate
+   # macOS/Linux
+   source venv/bin/activate
+   ```
 
-# Install the required dependencies
-pip install -r requirements.txt
-```
+3. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-## Configuration
+4. **API Configuration**:
+   Copy the example environment file and add your keys.
+   ```bash
+   cp .env.example .env
+   ```
+   Open `.env` and fill in `GEMINI_API_KEY` (or `OPENROUTER_API_KEY`).
 
-The system requires valid API keys to interact with external LLMs and search tools.
-
-Create a `.env` file in the root directory (you can copy `.env.example`):
-
-| Variable | Description | Required | Default |
-|----------|-------------|----------|---------|
-| `GEMINI_API_KEY` | Your Google Gemini API key | Yes* | |
-| `OPENROUTER_API_KEY` | Your OpenRouter API key | Yes* | |
-| `TAVILY_API_KEY` | Your Tavily Search API key for Fact-Checking | Yes | |
-| `SEMANTIC_SCHOLAR_API_KEY` | Your Semantic Scholar API key | No | |
-| `LLM_MODEL` | The LLM model to use (LiteLLM format) | No | `gemini/gemini-3.1-flash-lite-preview` |
-| `MAX_TOKENS_PER_CHUNK` | Maximum tokens per document chunk | No | `16000` |
-
-*\* Choose at least one primary LLM provider (Gemini or OpenRouter).*
+5. **Launch the UI**:
+   ```bash
+   streamlit run app.py
+   ```
 
 ## Usage
 
+### Web Interface (Recommended)
+
+The easiest way to use the evaluator is through the Streamlit dashboard:
+
+1. Run `streamlit run app.py`.
+2. Open the URL provided in your terminal (usually `http://localhost:8501`).
+3. Enter a valid arXiv URL (e.g., `https://arxiv.org/abs/1706.03762`).
+4. Click **Evaluate Paper** and watch the multi-agent orchestration in real-time.
+5. View scores and the full Judgement Report directly in the browser.
+
 ### Command Line Interface
 
-Run the application by providing a valid arXiv URL:
+You can also run the evaluation directly from the terminal:
 
 ```bash
-python src/main.py --url https://arxiv.org/abs/2303.08774
+python src/main.py --url https://arxiv.org/abs/1706.03762
 ```
 
-The system will display a progress indicator as it scrapes the paper, decomposes it, and orchestrates the multi-agent review process. Upon completion, a `Judgement_Report.md` (or PDF) will be saved in your current directory.
+The system will display progress as it scrapes and reviews the paper. A Markdown report will be generated in the `reports/` directory.
+
+## Dashboard Features
+
+- 🖥️ **Real-time Status**: Track LangGraph node execution (Scraping -> Analyzing -> Reporting) with live updates.
+- 📊 **Metric Cards**: High-level scores for Consistency, Grammar, Novelty, and Factuality displayed in a clean dashboard.
+- 📝 **Interactive Report**: Full Markdown rendering of the generated Judgement Report within the UI.
+- 🛡️ **Risk Highlighting**: Clear visibility of the calculated Fabrication Risk score.
+
+## Benchmarks & Existing Reports
+
+The system has been benchmarked against foundational research papers. You can find pre-generated reports in the following locations:
+
+- **Benchmark Papers**:
+  - [Judgement_Report_1706.03762_Attention_Is_All_You_Need.md](./benchmarks/Judgement_Report_1706.03762_Attention_Is_All_You_Need.md)
+- **Recently Generated Reports**:
+  - [Judgement_Report_1706.03762.md](./reports/Judgement_Report_1706.03762.md)
+  - [Judgement_Report_2603.11152.md](./reports/Judgement_Report_2603.11152.md)
+
+Every evaluation run saves its final output to the `reports/` directory as a Markdown file for offline viewing.
 
 ## Architecture
 
@@ -103,7 +133,7 @@ src/
 ├── orchestrator/           
 │   └── workflow.py         # Agent graph definition and state management
 └── output/                 
-    └── extractor.py        # Report compilation into MD/PDF format
+    └── extractor.py        # Report compilation into MD
 ```
 
 ## Development

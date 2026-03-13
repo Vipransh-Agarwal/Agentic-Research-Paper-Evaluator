@@ -46,19 +46,53 @@ if submit_button:
         async def run_workflow():
             cumulative_state = dict(initial_state)
             
-            # Progress: Use st.status to show LangGraph nodes as they execute
-            with st.status("Evaluating Paper...", expanded=True) as status:
+            # Define node order for progress bar
+            nodes = ["scrape", "decompose", "consistency", "grammar", "novelty", "fact_checker", "authenticity", "report"]
+            total_nodes = len(nodes)
+            
+            # Progress: Use st.status and progress bar
+            with st.status("Initializing Evaluation...", expanded=True) as status:
+                progress_bar = st.progress(0, text="Preparing...")
+                time_display = st.empty()
+                start_time = asyncio.get_event_loop().time()
+                
+                # State to control the continuous timer
+                tracking_state = {"is_running": True}
+                
+                async def update_timer():
+                    while tracking_state["is_running"]:
+                        elapsed = asyncio.get_event_loop().time() - start_time
+                        time_display.markdown(f"⏱️ **Time Spent:** {elapsed:.1f}s")
+                        await asyncio.sleep(0.1)
+
+                # Start the continuous timer task
+                timer_task = asyncio.create_task(update_timer())
+                
                 try:
                     # Stream updates from the graph
+                    node_count = 0
                     async for event in app.astream(initial_state):
                         for node_name, node_update in event.items():
-                            st.write(f"⚙️ Executed node: **{node_name.replace('_', ' ').capitalize()}**")
+                            node_count += 1
+                            progress = min(node_count / total_nodes, 1.0)
+                            
+                            # Update progress bar
+                            progress_bar.progress(progress, text=f"Executing Node: **{node_name.replace('_', ' ').capitalize()}**...")
+                            
                             # Merge updates into cumulative state
                             cumulative_state.update(node_update)
                             
+                    # Stop the timer task
+                    tracking_state["is_running"] = False
+                    await timer_task
+                    
                     status.update(label="Evaluation Complete!", state="complete", expanded=False)
+                    progress_bar.empty()
+                    time_display.empty()
+                    st.info(f"✅ Total Time Taken: {asyncio.get_event_loop().time() - start_time:.1f} seconds")
                     return cumulative_state
                 except Exception as e:
+                    tracking_state["is_running"] = False
                     status.update(label=f"Evaluation failed: {e}", state="error", expanded=True)
                     return None
 
